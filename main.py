@@ -205,13 +205,21 @@ class ExpenseTrackerApp(MDApp):
             daily_expense_list.bind(minimum_height=daily_expense_list.setter('height'))
 
             for date, categories in sorted(self.daily_expenses.items()):
-                formatted_date =date.strftime("%d-%m-%Y")
+                formatted_date = date.strftime("%d-%m-%Y")  # Format the date
                 date_label = Label(text=f"Date: {formatted_date}", size_hint_y=None, height=40, bold=True)
                 daily_expense_list.add_widget(date_label)
 
                 for category, total in categories.items():
-                    category_label = Label(text=f"{category}: {total}", size_hint_y=None, height=30)
+                    category_label = Label(text=f"{category}:", size_hint_y=None, height=30, bold=True)
                     daily_expense_list.add_widget(category_label)
+
+                    # Add items under each category
+                    for expense in self.expenses:
+                        if expense['category'] == category and datetime.strptime(expense['date'],
+                                                                                 "%d-%m-%Y").date() == date:
+                            item_label = Label(text=f"    - {expense['item']}: {expense['amount']}", size_hint_y=None,
+                                               height=30)
+                            daily_expense_list.add_widget(item_label)
 
                 daily_expense_list.add_widget(Label(text=""))  # Add a blank label for spacing
 
@@ -219,7 +227,7 @@ class ExpenseTrackerApp(MDApp):
             popup_layout.add_widget(scroll_view)
 
             # Close button
-        close_button = Button(text="Close", size_hint=(1, 0.2), background_color=(0.8, 0, 0, 1))
+        close_button = Button(text="Close", size_hint=(1, 0.1), background_color=(0.8, 0, 0, 1))
         popup_layout.add_widget(close_button)
 
         # Create the popup
@@ -253,7 +261,7 @@ class ExpenseTrackerApp(MDApp):
             popup_layout.add_widget(remaining_label)
 
         # Close button
-        close_button = Button(text="Close", size_hint=(1, 0.2), background_color=(0.8, 0, 0, 1))
+        close_button = Button(text="Close", size_hint=(1, 0.1), background_color=(0.8, 0, 0, 1))
         popup_layout.add_widget(close_button)
 
         # Create the popup
@@ -263,7 +271,5 @@ class ExpenseTrackerApp(MDApp):
         # Open the popup
         popup.open()
 
-
 if __name__ == "__main__":
     ExpenseTrackerApp().run()
-
