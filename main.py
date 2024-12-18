@@ -3,7 +3,11 @@ from kivy.uix.scrollview import ScrollView
 from kivy.uix.boxlayout import BoxLayout
 from kivy.metrics import dp
 from kivy.uix.popup import Popup
-from kivy.uix.label import Label
+
+from kivy.clock import Clock
+from kivy.storage.jsonstore import JsonStore
+
+from datetime import datetime, timedelta
 
 from kivymd.app import MDApp
 from kivymd.uix.label import MDLabel
@@ -22,7 +26,22 @@ from datetime import datetime
 class ExpenseList(RecycleView):
     def __init__(self, expenses, **kwargs):
         super().__init__(**kwargs)
-        self.update_data(expenses)
+        # Initialize JsonStore to save streak data
+        if self.streak_store.exists("streak"):
+            data = self.streak_store.get("streak")
+            self.streak_count = data["count"]  # Load previous streak count
+            self.last_used_date = data["last_date"]  # Load last saved date
+        else:
+            self.streak_count = 0
+            self.last_used_date = str(date.today())
+            self.streak_store.put("streak", count=self.streak_count, last_date=self.last_used_date)
+
+        self.streak_store = JsonStore("streak_data.json")
+        self.streak_count = 0  # Default streak count
+        self.last_used_date = None  # To track last usage date
+
+        # Load streak data on app start
+        self.load_streak_data()
 
     def update_data(self, expenses):
         self.data = [
@@ -38,8 +57,28 @@ class ExpenseTrackerScreen(MDScreen):
         self.daily_expenses = defaultdict(lambda: defaultdict(float))  # Daily expenses by category
         self.monthly_budget = 0.0
 
+        # Load streak data
+        self.streak_store = JsonStore("streak.json")
+        self.current_date = datetime.now().date()
+        self.streak_count = 0
+        self.last_used_date = None
+        self.load_streak_data()
+
         # Main container
         main_layout = BoxLayout(orientation='vertical', padding=dp(20), spacing=dp(10))
+
+        # Streak Counter Display
+        self.streak_label = MDLabel(
+            text=f"🔥 Streak: {self.streak_count} days",
+            halign="left",
+            theme_text_color="Primary",
+            size_hint=(None, None),
+            pos_hint={"x": 0.05, "y": 0.9},
+        )
+        self.add_widget(self.streak_label)
+
+        # Update streak logic every time app is launched
+        self.update_streak()
 
         # Title
         title = MDLabel(
@@ -86,6 +125,13 @@ class ExpenseTrackerScreen(MDScreen):
             readonly=True
         )
 
+        # Pick Date button
+        pick_date_button = MDRaisedButton(
+            text="Pick Date",
+            on_press=self.show_date_picker,
+            md_bg_color=(0.2, 0.6, 1, 1)
+        )
+
         # Bind the date input to show the date picker
         self.date_input.bind(focus=self.show_date_picker)
 
@@ -106,6 +152,7 @@ class ExpenseTrackerScreen(MDScreen):
         input_card.add_widget(self.item_input)
         input_card.add_widget(self.amount_input)
         input_card.add_widget(self.date_input)
+        input_card.add_widget(pick_date_button)
         input_card.add_widget(self.description_input)
         input_card.add_widget(self.budget_input)
         main_layout.add_widget(input_card)
@@ -155,11 +202,61 @@ class ExpenseTrackerScreen(MDScreen):
 
         self.add_widget(main_layout)
 
-    def show_date_picker(self, instance, value):
-        if value:  # Focus gained
-            date_dialog = MDDatePicker()
-            date_dialog.bind(on_save=self.on_date_selected)
-            date_dialog.open()
+        # Update streak every time the app opens
+        Clock.schedule_once(lambda dt: self.update_streak())
+
+    def update_rect(self, instance, value):
+        self.rect.pos = instance.pos
+        self.rect.size = instance.size
+
+    def load_streak_data(self):
+        """Load streak data from JsonStore."""
+        if self.streak_store.exists("streak"):
+            # Retrieve streak count and last used date
+            self.streak_count = self.streak_store.get("streak")["count"]
+            self.last_used_date = self.streak_store.get("streak")["last_date"]
+        else:
+            # Initialize data if it doesn't exist
+            self.streak_store.put("streak", count=0, last_date=str(datetime.now().date()))
+
+    def save_streak_data(self):
+        self.streak_store.put("streak_data", streak_count=self.streak_count,
+                              last_used_date=self.current_date.strftime("%Y-%m-%d"))
+
+    def update_streak(self):
+        """Update the streak based on the last usage date."""
+        today = datetime.now().date()
+
+        if self.last_used_date:
+            last_date = datetime.strptime(self.last_used_date, "%Y-%m-%d").date()
+
+            if today == last_date:
+                # Same day, streak remains unchanged
+                pass
+            elif today - last_date == timedelta(days=1):
+                # Increment streak if used the next consecutive day
+                self.streak_count += 1
+            else:
+                # Reset streak if a day is missed
+                self.streak_count = 1
+        else:
+            # No last used date means first-time use
+            self.streak_count = 1
+
+        # Update last used date to today
+        self.last_used_date = str(today)
+
+        # Save the updated streak data
+        self.streak_store.put("streak", count=self.streak_count, last_date=self.last_used_date)
+
+        # Update the streak label
+        self.streak_label.text = f"🔥 Streak: {self.streak_count} days"
+
+    def show_date_picker(self, instance):
+        """Show the date picker when 'Pick Date' button is clicked."""
+        date_dialog = MDDatePicker()
+        date_dialog.bind(on_save=self.on_date_selected)
+        date_dialog.open()
 
     def on_date_selected(self, instance, value, date_range):
         # Update the date input field with the selected date
@@ -216,6 +313,12 @@ class ExpenseTrackerScreen(MDScreen):
     def show_expenses_popup(self, instance):
         # Create a popup with Material Design styling
         popup_layout = BoxLayout(orientation='vertical', padding=dp(10), spacing=dp(10))
+        with popup_layout.canvas.before:
+            from kivy.graphics import Color, Rectangle
+            Color(1, 1, 1, 1)  # white color
+            self.rect = Rectangle(size=popup_layout.size, pos=popup_layout.pos)
+
+        popup_layout.bind(size=self.update_rect, pos=self.update_rect)
 
         if not self.expenses:
             popup_layout.add_widget(MDLabel(text="No expenses to show.", halign="center"))
@@ -278,7 +381,13 @@ class ExpenseTrackerScreen(MDScreen):
 
     def show_daily_expenses_popup(self, instance):
         # Similar structure to show_expenses_popup
-        popup_layout = BoxLayout(orientation='vertical', padding=dp(10), spacing=dp(10))
+        popup_layout = BoxLayout(orientation='vertical', padding=dp(10), spacing=dp(10),)
+        with popup_layout.canvas.before:
+            from kivy.graphics import Color, Rectangle
+            Color(1, 1, 1, 1)  # white color
+            self.rect = Rectangle(size=popup_layout.size, pos=popup_layout.pos)
+
+        popup_layout.bind(size=self.update_rect, pos=self.update_rect)
 
         if not self.daily_expenses:
             popup_layout.add_widget(MDLabel(text="No daily expenses to show.", halign="center"))
