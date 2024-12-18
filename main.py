@@ -1,13 +1,20 @@
-from kivy.app import App
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.textinput import TextInput
-from kivy.uix.label import Label
-from kivy.uix.button import Button
 from kivy.uix.recycleview import RecycleView
-from kivy.uix.popup import Popup
 from kivy.uix.scrollview import ScrollView
-from kivymd.uix.picker import MDDatePicker
+from kivy.uix.boxlayout import BoxLayout
+from kivy.metrics import dp
+from kivy.uix.popup import Popup
+from kivy.uix.label import Label
+
 from kivymd.app import MDApp
+from kivymd.uix.label import MDLabel
+from kivymd.uix.button import MDRaisedButton, MDFlatButton
+from kivymd.uix.textfield import MDTextField
+from kivymd.uix.pickers import MDDatePicker
+from kivymd.uix.list import MDList, OneLineListItem
+from kivymd.uix.card import MDCard
+from kivymd.uix.screen import MDScreen
+from kivymd.uix.screenmanager import MDScreenManager
+
 from collections import defaultdict
 from datetime import datetime
 
@@ -24,78 +31,145 @@ class ExpenseList(RecycleView):
         ]
 
 
-class ExpenseTrackerApp(MDApp):
-    def build(self):
+class ExpenseTrackerScreen(MDScreen):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.expenses = []  # List to store user-added expenses
         self.daily_expenses = defaultdict(lambda: defaultdict(float))  # Daily expenses by category
         self.monthly_budget = 0.0
 
-        # Main layout
-        main_layout = BoxLayout(orientation='vertical', padding=20, spacing=20)
+        # Main container
+        main_layout = BoxLayout(orientation='vertical', padding=dp(20), spacing=dp(10))
 
-        # Create a title
-        title = Label(text="Expense Tracker", font_size='24sp', size_hint=(1, 0.1), halign="center")
+        # Title
+        title = MDLabel(
+            text="Expense Tracker",
+            font_style="H5",
+            halign="center",
+            size_hint_y=None,
+            height=dp(50)
+        )
         main_layout.add_widget(title)
 
-        # Widgets for user input
-        self.category_input = TextInput(hint_text="Enter Category", size_hint=(1, 0.1), multiline=False)
-        self.item_input = TextInput(hint_text="Enter Item", size_hint=(1, 0.1), multiline=False)
-        self.amount_input = TextInput(hint_text="Enter Amount", input_filter='float', size_hint=(1, 0.1),
-                                      multiline=False)
+        # Input Card
+        input_card = MDCard(
+            orientation='vertical',
+            padding=dp(15),
+            spacing=dp(10),
+            size_hint=(1, None),
+            height=dp(450),
+            elevation=5
+        )
 
-        # Date input field
-        self.date_input = TextInput(hint_text="Select Date", size_hint=(1, 0.1), multiline=False, readonly=True)
-        self.date_input.bind(on_touch_down=self.show_date_picker)
+        # Input Fields
+        self.category_input = MDTextField(
+            hint_text="Enter Category",
+            mode="fill",
+            helper_text="Required field"
+        )
+        self.item_input = MDTextField(
+            hint_text="Enter Item",
+            mode="fill",
+            helper_text="Required field"
+        )
+        self.amount_input = MDTextField(
+            hint_text="Enter Amount",
+            mode="fill",
+            input_filter='float',
+            helper_text="Required field"
+        )
 
-        self.description_input = TextInput(hint_text="Enter Description", size_hint=(1, 0.1), multiline=False)
+        # Date input with custom date picker
+        self.date_input = MDTextField(
+            hint_text="Select Date",
+            mode="fill",
+            readonly=True
+        )
 
-        self.budget_input = TextInput(hint_text="Enter Monthly Budget", size_hint=(1, 0.1), multiline=False)
+        # Bind the date input to show the date picker
+        self.date_input.bind(focus=self.show_date_picker)
 
-        # Buttons
-        button_layout = BoxLayout(size_hint=(1, 0.1), spacing=10)
-        add_button = Button(text="Add Expense", size_hint=(0.33, 1), on_press=self.add_expense,
-                            background_color=(0.2, 0.6, 1, 1))
-        show_button = Button(text="Show Expenses", size_hint=(0.33, 1), on_press=self.show_expenses_popup,
-                             background_color=(0.2, 0.6, 1, 1))
-        daily_exp_button = Button(text="Daily Expenses", size_hint=(0.33, 1), on_press=self.show_daily_expenses_popup,
-                                  background_color=(0.2, 0.6, 1, 1))
+        self.description_input = MDTextField(
+            hint_text="Enter Description",
+            mode="fill",
+            multiline=True
+        )
 
-        monthly_summary_button = Button(text="Monthly Summary", size_hint=(1, 0.1),
-                                        on_press=self.show_monthly_summary_popup, background_color=(0.2, 0.6, 1, 1))
+        self.budget_input = MDTextField(
+            hint_text="Enter Monthly Budget",
+            mode="fill",
+            input_filter='float'
+        )
+
+        # Add inputs to input card
+        input_card.add_widget(self.category_input)
+        input_card.add_widget(self.item_input)
+        input_card.add_widget(self.amount_input)
+        input_card.add_widget(self.date_input)
+        input_card.add_widget(self.description_input)
+        input_card.add_widget(self.budget_input)
+        main_layout.add_widget(input_card)
+
+        # Button Layout
+        button_layout = BoxLayout(spacing=dp(10), size_hint_y=None, height=dp(50))
+
+        add_button = MDRaisedButton(
+            text="Add Expense",
+            on_press=self.add_expense,
+            md_bg_color=(0.2, 0.6, 1, 1)
+        )
+        show_button = MDRaisedButton(
+            text="Show Expenses",
+            on_press=self.show_expenses_popup,
+            md_bg_color=(0.2, 0.6, 1, 1)
+        )
+        daily_exp_button = MDRaisedButton(
+            text="Daily Expenses",
+            on_press=self.show_daily_expenses_popup,
+            md_bg_color=(0.2, 0.6, 1, 1)
+        )
 
         button_layout.add_widget(add_button)
         button_layout.add_widget(show_button)
         button_layout.add_widget(daily_exp_button)
-
-        # Feedback label
-        self.feedback_label = Label(text="", size_hint=(1, 0.1))
-
-        # RecycleView for expense list (not displayed in the popup)
-        self.expense_list_view = ExpenseList(self.expenses)
-
-        # Add widgets to main layout
-        main_layout.add_widget(self.category_input)
-        main_layout.add_widget(self.item_input)
-        main_layout.add_widget(self.amount_input)
-        main_layout.add_widget(self.date_input)
-        main_layout.add_widget(self.description_input)
-        main_layout.add_widget(self.budget_input)
         main_layout.add_widget(button_layout)
+
+        # Monthly Summary Button
+        monthly_summary_button = MDRaisedButton(
+            text="Monthly Summary",
+            on_press=self.show_monthly_summary_popup,
+            md_bg_color=(0.2, 0.6, 1, 1),
+            size_hint_y=None,
+            height=dp(50)
+        )
         main_layout.add_widget(monthly_summary_button)
+
+        # Feedback Label
+        self.feedback_label = MDLabel(
+            text="",
+            halign="center",
+            size_hint_y=None,
+            height=dp(50)
+        )
         main_layout.add_widget(self.feedback_label)
 
-        return main_layout
+        self.add_widget(main_layout)
 
-    def show_date_picker(self, instance, touch):
-        if instance.collide_point(*touch.pos):
+    def show_date_picker(self, instance, value):
+        if value:  # Focus gained
             date_dialog = MDDatePicker()
             date_dialog.bind(on_save=self.on_date_selected)
             date_dialog.open()
-            return True
-        return False
 
     def on_date_selected(self, instance, value, date_range):
+        # Update the date input field with the selected date
         self.date_input.text = value.strftime("%d-%m-%Y")
+        # Remove focus from the text field after selecting a date
+        self.date_input.focus = False
+
+    def on_cancel(self, instance, value):
+        print("Date selection canceled.")
+
 
     def add_expense(self, instance):
         # Get input data
@@ -129,9 +203,6 @@ class ExpenseTrackerApp(MDApp):
         date_key = datetime.strptime(date, "%d-%m-%Y").date()
         self.daily_expenses[date_key][category] += float(amount)
 
-        # Update the RecycleView
-        self.expense_list_view.update_data(self.expenses)
-
         # Clear input fields
         self.category_input.text = ""
         self.item_input.text = ""
@@ -143,12 +214,16 @@ class ExpenseTrackerApp(MDApp):
         self.feedback_label.text = f"Expense Added: {category} - {item} - {amount} on {date}"
 
     def show_expenses_popup(self, instance):
-        # Create a layout for the popup content
-        popup_layout = BoxLayout(orientation='vertical', spacing=10, padding=10)
+        # Create a popup with Material Design styling
+        popup_layout = BoxLayout(orientation='vertical', padding=dp(10), spacing=dp(10))
 
         if not self.expenses:
-            popup_layout.add_widget(Label(text="No expenses to show."))
+            popup_layout.add_widget(MDLabel(text="No expenses to show.", halign="center"))
         else:
+            # Grouped expenses display
+            scroll_view = ScrollView()
+            expense_list = MDList()
+
             # Group expenses by category
             grouped_expenses = {}
             for expense in self.expenses:
@@ -158,118 +233,158 @@ class ExpenseTrackerApp(MDApp):
                 grouped_expenses[category]['items'].append(expense)
                 grouped_expenses[category]['total'] += expense['amount']
 
-            # Add all expenses to the popup layout
-            scroll_view = ScrollView()
-            expense_list = BoxLayout(orientation='vertical', size_hint_y=None)
-            expense_list.bind(minimum_height=expense_list.setter('height'))
-
+            # Add expenses to list
             for category, details in grouped_expenses.items():
-                category_label = Label(text=f"Category: {category} - Total Spent: {details['total']}", size_hint_y=None,
-                                       height=40, bold=True)
-                expense_list.add_widget(category_label)
+                # Category header
+                category_item = OneLineListItem(
+                    text=f"{category} - Total: {details['total']:.2f}",
+                    font_style="Subtitle1"
+                )
+                expense_list.add_widget(category_item)
 
+                # Individual expenses
                 for expense in details['items']:
-                    expense_label = Label(
-                        text=f"{expense['item']} - {expense['amount']} on {expense['date']} in {expense['description']}",
-                        size_hint_y=None,
-                        height=40
+                    expense_item = OneLineListItem(
+                        text=f"{expense['item']} - {expense['amount']} on {expense['date']}"
                     )
-                    expense_list.add_widget(expense_label)
-
-                expense_list.add_widget(Label(text=""))  # Add a blank label for spacing
+                    expense_list.add_widget(expense_item)
 
             scroll_view.add_widget(expense_list)
             popup_layout.add_widget(scroll_view)
 
-        # Close button
-        close_button = Button(text="Close", size_hint=(1, 0.2), background_color=(0.8, 0, 0, 1))
+        # Close button with Material Design
+        close_button = MDFlatButton(
+            text="Close",
+            on_release=self.dismiss_popup
+        )
         popup_layout.add_widget(close_button)
 
-        # Create the popup
-        popup = Popup(title="Expense List", content=popup_layout, size_hint=(0.9, 0.9))
-        close_button.bind(on_press=popup.dismiss)
+        # Create popup
+        self.expenses_popup = Popup(
+            title="Expense List",
+            content=popup_layout,
+            size_hint=(0.9, 0.9)
+        )
+        self.expenses_popup.open()
 
-        # Open the popup
-        popup.open()
+    def dismiss_popup(self, *args):
+        # Generic method to close popups
+        if hasattr(self, 'expenses_popup'):
+            self.expenses_popup.dismiss()
+        if hasattr(self, 'daily_expenses_popup'):
+            self.daily_expenses_popup.dismiss()
+        if hasattr(self, 'monthly_summary_popup'):
+            self.monthly_summary_popup.dismiss()
 
     def show_daily_expenses_popup(self, instance):
-        # Create a layout for the popup content
-        popup_layout = BoxLayout(orientation='vertical', spacing=10, padding=10)
+        # Similar structure to show_expenses_popup
+        popup_layout = BoxLayout(orientation='vertical', padding=dp(10), spacing=dp(10))
 
         if not self.daily_expenses:
-            popup_layout.add_widget(Label(text="No daily expenses to show."))
+            popup_layout.add_widget(MDLabel(text="No daily expenses to show.", halign="center"))
         else:
-            # Add daily expenses to the popup layout
             scroll_view = ScrollView()
-            daily_expense_list = BoxLayout(orientation='vertical', size_hint_y=None)
-            daily_expense_list.bind(minimum_height=daily_expense_list.setter('height'))
+            daily_expense_list = MDList()
 
             for date, categories in sorted(self.daily_expenses.items()):
-                formatted_date = date.strftime("%d-%m-%Y")  # Format the date
-                date_label = Label(text=f"Date: {formatted_date}", size_hint_y=None, height=40, bold=True)
-                daily_expense_list.add_widget(date_label)
+                formatted_date = date.strftime("%d-%m-%Y")
+                date_item = OneLineListItem(
+                    text=f"Date: {formatted_date}",
+                    font_style="Subtitle1"
+                )
+                daily_expense_list.add_widget(date_item)
 
                 for category, total in categories.items():
-                    category_label = Label(text=f"{category}:", size_hint_y=None, height=30, bold=True)
-                    daily_expense_list.add_widget(category_label)
-
-                    # Add items under each category
-                    for expense in self.expenses:
-                        if expense['category'] == category and datetime.strptime(expense['date'],
-                                                                                 "%d-%m-%Y").date() == date:
-                            item_label = Label(text=f"    - {expense['item']}: {expense['amount']}", size_hint_y=None,
-                                               height=30)
-                            daily_expense_list.add_widget(item_label)
-
-                daily_expense_list.add_widget(Label(text=""))  # Add a blank label for spacing
+                    category_item = OneLineListItem(
+                        text=f"{category}: {total:.2f}"
+                    )
+                    daily_expense_list.add_widget(category_item)
 
             scroll_view.add_widget(daily_expense_list)
             popup_layout.add_widget(scroll_view)
 
-            # Close button
-        close_button = Button(text="Close", size_hint=(1, 0.1), background_color=(0.8, 0, 0, 1))
+        close_button = MDFlatButton(
+            text="Close",
+            on_release=self.dismiss_popup
+        )
         popup_layout.add_widget(close_button)
 
-        # Create the popup
-        popup = Popup(title="Daily Expenses", content=popup_layout, size_hint=(0.9, 0.9))
-        close_button.bind(on_press=popup.dismiss)
-
-        # Open the popup
-        popup.open()
+        self.daily_expenses_popup = Popup(
+            title="Daily Expenses",
+            content=popup_layout,
+            size_hint=(0.9, 0.9)
+        )
+        self.daily_expenses_popup.open()
 
     def show_monthly_summary_popup(self, instance):
-        # Create a layout for the popup content
-        popup_layout = BoxLayout(orientation='vertical', spacing=10, padding=10)
+        popup_layout = BoxLayout(orientation='vertical', padding=dp(10), spacing=dp(10))
 
         if not self.expenses:
-            popup_layout.add_widget(Label(text="No expenses to show."))
+            popup_layout.add_widget(MDLabel(text="No expenses to show.", halign="center"))
         else:
             # Calculate total spent
             total_spent = sum(expense['amount'] for expense in self.expenses)
 
-            # Display budget and total spent
-            budget_label = Label(text=f"Monthly Budget: {self.monthly_budget}", size_hint_y=None, height=40, bold=True)
-            spent_label = Label(text=f"Total Spent: {total_spent}", size_hint_y=None, height=40, bold=True)
+            # Create cards for budget information
+            budget_card = MDCard(
+                orientation='vertical',
+                padding=dp(15),
+                spacing=dp(10),
+                size_hint=(1, None),
+                height=dp(250),
+                elevation=5
+            )
 
-            popup_layout.add_widget(budget_label)
-            popup_layout.add_widget(spent_label)
+            # Budget information labels
+            budget_label = MDLabel(
+                text=f"Monthly Budget: {self.monthly_budget:.2f}",
+                font_style="Subtitle1"
+            )
+            spent_label = MDLabel(
+                text=f"Total Spent: {total_spent:.2f}",
+                font_style="Subtitle1"
+            )
 
-            # Display remaining budget
+            # Remaining budget calculation and color-coded label
             remaining_budget = self.monthly_budget - total_spent
-            remaining_label = Label(text=f"Remaining Budget: {remaining_budget}", size_hint_y=None, height=40,
-                                    bold=True)
-            popup_layout.add_widget(remaining_label)
+            remaining_label = MDLabel(
+                text=f"Remaining Budget: {remaining_budget:.2f}",
+                font_style="Subtitle1",
+                theme_text_color="Custom",
+                text_color=(0, 0.7, 0, 1) if remaining_budget > 0 else (0.7, 0, 0, 1)
+            )
 
-        # Close button
-        close_button = Button(text="Close", size_hint=(1, 0.1), background_color=(0.8, 0, 0, 1))
+            budget_card.add_widget(budget_label)
+            budget_card.add_widget(spent_label)
+            budget_card.add_widget(remaining_label)
+
+            popup_layout.add_widget(budget_card)
+
+        close_button = MDFlatButton(
+            text="Close",
+            on_release=self.dismiss_popup
+        )
         popup_layout.add_widget(close_button)
 
-        # Create the popup
-        popup = Popup(title="Monthly Summary", content=popup_layout, size_hint=(0.9, 0.9))
-        close_button.bind(on_press=popup.dismiss)
+        self.monthly_summary_popup = Popup(
+            title="Monthly Summary",
+            content=popup_layout,
+            size_hint=(0.9, 0.9)
+        )
+        self.monthly_summary_popup.open()
 
-        # Open the popup
-        popup.open()
+
+class ExpenseTrackerApp(MDApp):
+    def build(self):
+        # Create screen manager
+        self.sm = MDScreenManager()
+
+        # Create main screen
+        main_screen = ExpenseTrackerScreen(name='main')
+        self.sm.add_widget(main_screen)
+
+        return self.sm
+
 
 if __name__ == "__main__":
     ExpenseTrackerApp().run()
