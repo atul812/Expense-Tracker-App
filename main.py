@@ -70,7 +70,7 @@ class ExpenseTrackerScreen(MDScreen):
 
         # Streak Counter Display
         self.streak_label = MDLabel(
-            text=f"🔥 Streak: {len(self.streak_queue)} days",
+            text=f"Streak: {len(self.streak_queue)} days",
             halign="left",
             theme_text_color="Primary",
             size_hint=(None, None),
@@ -208,7 +208,7 @@ class ExpenseTrackerScreen(MDScreen):
                 self.streak_queue.clear()  # Reset streak if a day is missed
             self.streak_queue.append(today)
         self.save_streak_data()
-        self.streak_label.text = f"🔥 Streak: {len(self.streak_queue)} days"
+        self.streak_label.text = f"Streak: {len(self.streak_queue)} days"
 
     def add_expense(self, instance):
         category = self.category_input.text
